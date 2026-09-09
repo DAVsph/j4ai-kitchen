@@ -5,65 +5,32 @@ import { useLanguage } from "@/lib/language-context"
 
 export function Footer() {
   const { t } = useLanguage()
-
   return (
-    <footer className="py-20 px-6 lg:px-8 bg-foreground text-background">
+    <footer id="contact" className="py-16 px-6 lg:px-8 bg-foreground text-background">
       <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
-          <div className="md:col-span-1">
-            <Link href="/" className="inline-block mb-6">
-              <span className="font-serif text-2xl tracking-tight text-background">SpaceHome</span>
-            </Link>
-            <p className="text-background/70 text-sm leading-relaxed max-w-sm mb-6">{t.footer.description}</p>
-            <div className="flex gap-6">
-              {["Instagram", "Pinterest", "LinkedIn"].map((social) => (
-                <Link
-                  key={social}
-                  href="#"
-                  className="text-xs tracking-[0.15em] uppercase text-background/60 hover:text-background transition-colors"
-                >
-                  {social}
-                </Link>
-              ))}
+        <div className="grid md:grid-cols-3 gap-10 mb-12">
+          <div>
+            <Link href="/" className="font-serif text-2xl">SpaceHome</Link>
+            <p className="text-background/70 text-sm leading-relaxed mt-5 max-w-sm">{t.footer.description}</p>
+          </div>
+          <div>
+            <h4 className="text-xs tracking-[0.2em] uppercase text-background/60 mb-5">Navigation</h4>
+            <div className="space-y-3 text-sm">
+              <p><Link href="/decouverte" className="text-background/80 hover:text-background">Créer mon projet</Link></p>
+              <p><Link href="/partenaires" className="text-background/80 hover:text-background">Professionnels</Link></p>
+              <p><Link href="/cgu" className="text-background/80 hover:text-background">CGU</Link></p>
+              <p><Link href="/cgv" className="text-background/80 hover:text-background">CGV</Link></p>
             </div>
           </div>
-
           <div>
-            <h4 className="text-xs tracking-[0.2em] uppercase text-background/60 mb-6">{t.footer.navigation}</h4>
-            <ul className="space-y-4">
-              {[
-                { label: t.nav.howItWorks, href: "#how-it-works" },
-                { label: t.nav.gallery, href: "#gallery" },
-                { label: t.nav.pricing, href: "#pricing" },
-                { label: t.nav.contact, href: "#contact" },
-              ].map((item) => (
-                <li key={item.label}>
-                  <Link href={item.href} className="text-sm text-background/80 hover:text-background transition-colors">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs tracking-[0.2em] uppercase text-background/60 mb-6">{t.footer.contact}</h4>
-            <ul className="space-y-4">
-              <li className="text-sm text-background/80">hello@spacehome.com</li>
-              <li className="text-sm text-background/80">+1 (555) 123-4567</li>
-            </ul>
+            <h4 className="text-xs tracking-[0.2em] uppercase text-background/60 mb-5">Contact</h4>
+            <a href="mailto:contact@spacehome.ai" className="text-sm text-background/90 hover:text-background">contact@spacehome.ai</a>
+            <p className="text-xs text-background/60 mt-3">Questions sur votre projet, votre dossier ou un partenariat professionnel.</p>
           </div>
         </div>
-
-        <div className="pt-8 border-t border-background/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-background/60">{t.footer.copyright}</p>
-          <div className="flex items-center gap-8">
-            {[t.footer.privacy, t.footer.terms].map((item) => (
-              <Link key={item} href="#" className="text-xs text-background/60 hover:text-background transition-colors">
-                {item}
-              </Link>
-            ))}
-          </div>
+        <div className="pt-6 border-t border-background/20 flex flex-col sm:flex-row justify-between gap-3">
+          <p className="text-xs text-background/60">© SpaceHome. Tous droits réservés.</p>
+          <p className="text-xs text-background/60">Les visuels IA sont fournis à titre d’inspiration et ne remplacent pas l’expertise technique d’un professionnel.</p>
         </div>
       </div>
     </footer>
