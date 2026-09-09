@@ -1,7 +1,8 @@
 import {NextResponse}from"next/server"
-import{allowRequest,clientIp,safeProjectInput}from"@/lib/security"
+import{allowRequest,clientIp,safeProjectInput,requestGuard}from"@/lib/security"
 export const runtime="nodejs"
 export async function POST(req:Request){try{
+ const guard=requestGuard(req,96*1024);if(guard)return NextResponse.json({error:guard},{status:403})
  if(!process.env.OPENAI_API_KEY)return NextResponse.json({error:"OPENAI_API_KEY non configurée"},{status:503})
  const ip=clientIp(req);if(!allowRequest(`brief:${ip}`,8,10*60*1000))return NextResponse.json({error:"Trop de demandes. Réessayez dans quelques minutes."},{status:429})
  const raw=await req.json();const project=safeProjectInput(raw)
