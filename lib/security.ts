@@ -17,8 +17,8 @@ export function cleanText(value:unknown,max=1000){
 }
 
 export function safeProjectInput(body:any){
-  const keys=["project","room","size","dimensions","household","uses","keep","change","constraints","style","details","avoid","priority","budget","timing","postcode","firstname","lastname","email","phone"]
+  const keys=["project","room","size","dimensions","household","uses","usage","keep","change","constraints","style","details","avoid","priority","budget","timing","postcode","firstname","lastname","email","phone","aiBrief"]
   const out:Record<string,string>={}
-  for(const k of keys)out[k]=cleanText(body?.[k],k==="details"||k==="constraints"||k==="change"||k==="keep"?1200:300)
+  for(const k of keys)out[k]=cleanText(body?.[k],k==="details"||k==="constraints"||k==="change"||k==="keep"||k==="usage"||k==="aiBrief"?3000:300)
   return out
 }
