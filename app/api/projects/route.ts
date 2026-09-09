@@ -1,8 +1,9 @@
 import{NextResponse}from"next/server"
 import{createClient}from"@supabase/supabase-js"
-import{allowRequest,clientIp,safeProjectInput,cleanText}from"@/lib/security"
+import{allowRequest,clientIp,safeProjectInput,cleanText,requestGuard}from"@/lib/security"
 const budgetMap:Record<string,[number|null,number|null]>={"< 10 000 €":[null,10000],"10 000–25 000 €":[10000,25000],"25 000–50 000 €":[25000,50000],"50 000 € et +":[50000,null],"À définir":[null,null]}
 export async function POST(req:Request){try{
+ const guard=requestGuard(req,96*1024);if(guard)return NextResponse.json({error:guard},{status:403})
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)return NextResponse.json({error:"Supabase n’est pas configuré."},{status:503})
  const ip=clientIp(req);if(!allowRequest(`project:${ip}`,8,30*60*1000))return NextResponse.json({error:"Trop de créations de projets. Réessayez plus tard."},{status:429})
  const raw=await req.json();const body=safeProjectInput(raw);if(!body.email||!body.email.includes("@"))return NextResponse.json({error:"Email valide requis."},{status:400})
