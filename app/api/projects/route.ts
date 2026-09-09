@@ -1,26 +1,5 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-const budgetMap: Record<string,[number|null,number|null]>={"< 10 000 €":[null,10000],"10 000–25 000 €":[10000,25000],"25 000–50 000 €":[25000,50000],"50 000 € et +":[50000,null],"À définir":[null,null]}
-
-export async function POST(req:Request){
- try{
-  const url=process.env.NEXT_PUBLIC_SUPABASE_URL, key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  if(!url||!key)return NextResponse.json({error:"Supabase n’est pas configuré sur le serveur."},{status:503})
-  const body=await req.json(); if(!body.email||body.share!=="yes")return NextResponse.json({error:"Email et consentement de transmission requis."},{status:400})
-  const supabase=createClient(url,key,{auth:{persistSession:false}})
-  const password=crypto.randomUUID()+"aA1!"
-  const {data:auth,error:authError}=await supabase.auth.signUp({email:body.email,password,options:{data:{first_name:body.firstname,last_name:body.lastname,phone:body.phone}}})
-  if(authError||!auth.user)return NextResponse.json({error:authError?.message||"Impossible de créer le compte projet."},{status:400})
-  const uid=auth.user.id
-  const {error:profileError}=await supabase.from("profiles").insert({id:uid,role:"customer",first_name:body.firstname,last_name:body.lastname,phone:body.phone})
-  if(profileError)return NextResponse.json({error:profileError.message},{status:400})
-  const [budget_min,budget_max]=budgetMap[body.budget]||[null,null]
-  const {data:project,error:projectError}=await supabase.from("projects").insert({customer_id:uid,status:"qualified",project_type:body.project,room_type:body.room,surface_m2:body.size?Number(body.size):null,style:body.style,details:body.details,budget_min,budget_max,timing:body.timing,postcode:body.postcode}).select("id,reference").single()
-  if(projectError||!project)return NextResponse.json({error:projectError?.message||"Création du projet impossible."},{status:400})
-  const consents=[{project_id:project.id,customer_id:uid,purpose:"partner_project_sharing",granted:true,policy_version:"v1",consent_text:"J’autorise SpaceHome à transmettre mon brief et mes coordonnées à un maximum de trois boutiques partenaires adaptées à mon projet afin qu’elles puissent me contacter."},{project_id:project.id,customer_id:uid,purpose:"spacehome_marketing",granted:body.marketing==="yes",policy_version:"v1",consent_text:"Je souhaite recevoir les actualités, inspirations et offres SpaceHome par email."}]
-  const {error:consentError}=await supabase.from("consents").insert(consents)
-  if(consentError)return NextResponse.json({error:consentError.message},{status:400})
-  return NextResponse.json({projectId:project.id,reference:project.reference})
- }catch{return NextResponse.json({error:"Impossible de créer le projet pour le moment."},{status:500})}
-}
+const budgetMap:Record<string,[number|null,number|null]>={"< 10 000 €":[null,10000],"10 000–25 000 €":[10000,25000],"25 000–50 000 €":[25000,50000],"50 000 € et +":[50000,null],"À définir":[null,null]}
+export async function POST(req:Request){try{const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)return NextResponse.json({error:"Supabase n’est pas configuré."},{status:503});const body=await req.json();if(!body.email||body.share!=="yes")return NextResponse.json({error:"Email et consentement requis."},{status:400});const supabase=createClient(url,key,{auth:{persistSession:false}});const password=crypto.randomUUID()+"aA1!";const{data:auth,error:authError}=await supabase.auth.signUp({email:body.email,password,options:{data:{first_name:body.firstname,last_name:body.lastname,phone:body.phone}}});if(authError||!auth.user)return NextResponse.json({error:authError?.message||"Création du compte impossible."},{status:400});if(!auth.session)return NextResponse.json({error:"Compte créé. La confirmation email Supabase est active; confirmez l’email avant de créer le projet."},{status:202});const[budget_min,budget_max]=budgetMap[body.budget]||[null,null];const{data:project,error:projectError}=await supabase.from("projects").insert({customer_id:auth.user.id,status:"qualified",project_type:body.project,room_type:body.room,surface_m2:body.size?Number(body.size):null,style:body.style,details:body.details,budget_min,budget_max,timing:body.timing,postcode:body.postcode}).select("id,reference").single();if(projectError||!project)return NextResponse.json({error:projectError?.message||"Création du projet impossible."},{status:400});const consents=[{project_id:project.id,customer_id:auth.user.id,purpose:"partner_project_sharing",granted:true,policy_version:"v1",consent_text:"J’autorise SpaceHome à transmettre mon brief et mes coordonnées à un maximum de trois boutiques partenaires adaptées à mon projet afin qu’elles puissent me contacter."},{project_id:project.id,customer_id:auth.user.id,purpose:"spacehome_marketing",granted:body.marketing==="yes",policy_version:"v1",consent_text:"Je souhaite recevoir les actualités, inspirations et offres SpaceHome par email."}];const{error:consentError}=await supabase.from("consents").insert(consents);if(consentError)return NextResponse.json({error:consentError.message},{status:400});return NextResponse.json({projectId:project.id,reference:project.reference})}catch{return NextResponse.json({error:"Impossible de créer le projet pour le moment."},{status:500})}}
