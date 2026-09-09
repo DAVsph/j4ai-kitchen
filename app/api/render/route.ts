@@ -1,9 +1,10 @@
 import{NextRequest,NextResponse}from"next/server"
 import{createClient}from"@supabase/supabase-js"
-import{allowRequest,clientIp,cleanText}from"@/lib/security"
+import{allowRequest,clientIp,cleanText,requestGuard}from"@/lib/security"
 export const runtime="nodejs"
 async function render(prompt:string){const r=await fetch("https://api.openai.com/v1/images/generations",{method:"POST",headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-image-2",prompt,size:"1024x1024",quality:"medium",n:1})});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"Erreur OpenAI");const x=d?.data?.[0];return x?.b64_json?`data:image/png;base64,${x.b64_json}`:x?.url}
 export async function POST(req:NextRequest){try{
+ const guard=requestGuard(req,32*1024);if(guard)return NextResponse.json({error:guard},{status:403})
  if(!process.env.OPENAI_API_KEY)return NextResponse.json({error:"Service image indisponible."},{status:503})
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)return NextResponse.json({error:"Service projet indisponible."},{status:503})
  const ip=clientIp(req);if(!allowRequest(`render:${ip}`,3,30*60*1000))return NextResponse.json({error:"Limite de génération atteinte pour le moment."},{status:429})
