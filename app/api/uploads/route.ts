@@ -1,11 +1,12 @@
 import{NextRequest,NextResponse}from"next/server"
 import{createClient}from"@supabase/supabase-js"
-import{allowRequest,clientIp}from"@/lib/security"
+import{allowRequest,clientIp,requestGuard}from"@/lib/security"
 export const runtime="nodejs"
 const allowed=new Set(["image/jpeg","image/png","image/webp","application/pdf"])
 const ext:Record<string,string>={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","application/pdf":"pdf"}
 function validMagic(buf:Uint8Array,type:string){if(type==="application/pdf")return buf[0]===0x25&&buf[1]===0x50&&buf[2]===0x44&&buf[3]===0x46;if(type==="image/png")return buf[0]===0x89&&buf[1]===0x50&&buf[2]===0x4e&&buf[3]===0x47;if(type==="image/jpeg")return buf[0]===0xff&&buf[1]===0xd8&&buf[2]===0xff;if(type==="image/webp")return String.fromCharCode(...buf.slice(0,4))==="RIFF"&&String.fromCharCode(...buf.slice(8,12))==="WEBP";return false}
 export async function POST(req:NextRequest){try{
+ const guard=requestGuard(req,35*1024*1024);if(guard)return NextResponse.json({error:guard},{status:403})
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)return NextResponse.json({error:"Supabase non configuré"},{status:503})
  const ip=clientIp(req);if(!allowRequest(`upload:${ip}`,12,30*60*1000))return NextResponse.json({error:"Trop d’envois de fichiers. Réessayez plus tard."},{status:429})
  const bearer=req.headers.get("authorization")?.replace(/^Bearer\s+/i,"");const token=bearer||req.cookies.get("sh_session")?.value;const projectId=req.headers.get("x-spacehome-project")||req.cookies.get("sh_project")?.value;if(!token||!projectId)return NextResponse.json({error:"Session projet absente. Recréez ou rouvrez votre projet."},{status:401})
