@@ -1,0 +1,16 @@
+import{NextRequest,NextResponse}from"next/server"
+import{createClient}from"@supabase/supabase-js"
+import{allowRequest,clientIp}from"@/lib/security"
+export const runtime="nodejs"
+const allowed=new Set(["image/jpeg","image/png","image/webp","application/pdf"])
+const ext:Record<string,string>={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","application/pdf":"pdf"}
+function validMagic(buf:Uint8Array,type:string){if(type==="application/pdf")return buf[0]===0x25&&buf[1]===0x50&&buf[2]===0x44&&buf[3]===0x46;if(type==="image/png")return buf[0]===0x89&&buf[1]===0x50&&buf[2]===0x4e&&buf[3]===0x47;if(type==="image/jpeg")return buf[0]===0xff&&buf[1]===0xd8&&buf[2]===0xff;if(type==="image/webp")return String.fromCharCode(...buf.slice(0,4))==="RIFF"&&String.fromCharCode(...buf.slice(8,12))==="WEBP";return false}
+export async function POST(req:NextRequest){try{
+ const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)return NextResponse.json({error:"Supabase non configuré"},{status:503})
+ const ip=clientIp(req);if(!allowRequest(`upload:${ip}`,12,30*60*1000))return NextResponse.json({error:"Trop d’envois de fichiers. Réessayez plus tard."},{status:429})
+ const token=req.cookies.get("sh_session")?.value,projectId=req.cookies.get("sh_project")?.value;if(!token||!projectId)return NextResponse.json({error:"Session projet expirée. Recréez ou rouvrez votre projet."},{status:401})
+ const db=createClient(url,key,{auth:{persistSession:false},global:{headers:{Authorization:`Bearer ${token}`}}});const{data:userData,error:userError}=await db.auth.getUser(token);if(userError||!userData.user)return NextResponse.json({error:"Session invalide"},{status:401})
+ const form=await req.formData();const files=form.getAll("files").filter((x):x is File=>x instanceof File);const kind=form.get("kind")==="plan"?"plans":"photos";const maxCount=kind==="photos"?5:3;if(!files.length||files.length>maxCount)return NextResponse.json({error:`Maximum ${maxCount} fichiers pour cette catégorie.`},{status:400})
+ const uploaded:string[]=[];for(const file of files){if(!allowed.has(file.type))return NextResponse.json({error:"Format refusé. Utilisez JPG, PNG, WEBP ou PDF."},{status:415});if(file.size<=0||file.size>10*1024*1024)return NextResponse.json({error:"Chaque fichier doit faire moins de 10 Mo."},{status:413});const bytes=new Uint8Array(await file.arrayBuffer());if(!validMagic(bytes,file.type))return NextResponse.json({error:"Le contenu d’un fichier ne correspond pas à son format déclaré."},{status:415});const path=`${userData.user.id}/${projectId}/${kind}/${crypto.randomUUID()}.${ext[file.type]}`;const{error}=await db.storage.from("project-files").upload(path,bytes,{contentType:file.type,upsert:false,cacheControl:"3600"});if(error){console.error("upload_error",error);return NextResponse.json({error:"Impossible de stocker le fichier."},{status:400})}uploaded.push(path)}
+ return NextResponse.json({ok:true,files:uploaded})
+}catch(e){console.error("upload_route_error",e);return NextResponse.json({error:"Envoi impossible"},{status:500})}}
