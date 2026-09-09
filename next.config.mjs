@@ -5,10 +5,14 @@ const securityHeaders=[
   {key:'X-Frame-Options',value:'DENY'},
   {key:'Permissions-Policy',value:'camera=(), microphone=(), geolocation=()'},
   {key:'Cross-Origin-Opener-Policy',value:'same-origin'},
+  {key:'Cross-Origin-Resource-Policy',value:'same-origin'},
+  {key:'X-Permitted-Cross-Domain-Policies',value:'none'},
+  {key:'Strict-Transport-Security',value:'max-age=31536000; includeSubDomains'},
 ]
 const nextConfig={
   typescript:{ignoreBuildErrors:true},
   images:{unoptimized:true},
-  async headers(){return[{source:'/:path*',headers:securityHeaders}]},
+  poweredByHeader:false,
+  async headers(){return[{source:'/:path*',headers:securityHeaders},{source:'/api/:path*',headers:[{key:'Cache-Control',value:'no-store, private'},{key:'X-Robots-Tag',value:'noindex, nofollow'}]}]},
 }
 export default nextConfig
