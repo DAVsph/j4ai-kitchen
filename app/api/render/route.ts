@@ -1,8 +1,36 @@
 import{NextRequest,NextResponse}from"next/server"
 import{createClient}from"@supabase/supabase-js"
 import{allowRequest,clientIp,cleanText,requestGuard}from"@/lib/security"
+
 export const runtime="nodejs"
-async function render(prompt:string){const r=await fetch("https://api.openai.com/v1/images/generations",{method:"POST",headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-image-2",prompt,size:"1024x1024",quality:"medium",n:1})});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"Erreur OpenAI");const x=d?.data?.[0];return x?.b64_json?`data:image/png;base64,${x.b64_json}`:x?.url}
+export const maxDuration=120
+
+async function callImage(model:string,prompt:string){
+  const r=await fetch("https://api.openai.com/v1/images/generations",{
+    method:"POST",
+    headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},
+    body:JSON.stringify({model,prompt,size:"1024x1024",quality:"medium",n:1})
+  })
+  const d=await r.json().catch(()=>({}))
+  if(!r.ok){
+    const message=d?.error?.message||`Erreur OpenAI (${r.status})`
+    throw new Error(`${model}: ${message}`)
+  }
+  const x=d?.data?.[0]
+  const image=x?.b64_json?`data:image/png;base64,${x.b64_json}`:x?.url
+  if(!image)throw new Error(`${model}: aucune image retournée`)
+  return image
+}
+
+async function render(prompt:string){
+  try{
+    return await callImage("gpt-image-2",prompt)
+  }catch(primary){
+    console.error("gpt_image_2_error",primary)
+    return await callImage("gpt-image-1",prompt)
+  }
+}
+
 export async function POST(req:NextRequest){try{
  const guard=requestGuard(req,32*1024);if(guard)return NextResponse.json({error:guard},{status:403})
  if(!process.env.OPENAI_API_KEY)return NextResponse.json({error:"Service image indisponible."},{status:503})
@@ -15,6 +43,8 @@ export async function POST(req:NextRequest){try{
  const{data:consent,error:ce}=await db.from("consents").select("id,granted,created_at").eq("project_id",projectId).eq("customer_id",u.user.id).eq("purpose","partner_introduction").eq("granted",true).order("created_at",{ascending:false}).limit(1).maybeSingle();if(ce||!consent)return NextResponse.json({error:"Votre accord explicite de mise en relation doit être enregistré avant la création des visuels."},{status:403})
  const body=await req.json();const brief=cleanText(body?.brief,3000);if(brief.length<20)return NextResponse.json({error:"Brief incomplet"},{status:400})
  const common=`Photographie d'architecture intérieure réaliste et haut de gamme. Brief client: ${brief}. Le rendu est uniquement illustratif. Ne jamais affirmer une faisabilité technique, une conformité aux normes, des dimensions exactes, un prix, une marque ou un matériau non fourni. Conserver des proportions visuellement plausibles. Sans texte ni logo.`
- const[a,b]=await Promise.all([render(`${common} PROPOSITION A: interprétation la plus fidèle possible au brief, sobre et cohérente.`),render(`${common} PROPOSITION B: alternative SpaceHome distincte mais compatible avec les contraintes essentielles; explorer une autre palette, matières ou ambiance sans contredire les exigences impératives.`)])
+ // Génération séquentielle : évite qu'un compte à faible quota reçoive deux appels image simultanés.
+ const a=await render(`${common} PROPOSITION A: interprétation la plus fidèle possible au brief, sobre et cohérente.`)
+ const b=await render(`${common} PROPOSITION B: alternative SpaceHome distincte mais compatible avec les contraintes essentielles; explorer une autre palette, matières ou ambiance sans contredire les exigences impératives.`)
  return NextResponse.json({images:[a,b]},{headers:{"Cache-Control":"no-store, private","Pragma":"no-cache"}})
 }catch(e){console.error("render_error",e);return NextResponse.json({error:"La création des visuels est momentanément indisponible."},{status:500})}}
