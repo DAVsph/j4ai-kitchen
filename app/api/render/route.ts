@@ -30,6 +30,19 @@ async function render(prompt:string){
   }
 }
 
+
+export async function GET(){
+ try{
+  if(!process.env.OPENAI_API_KEY)return NextResponse.json({ok:false,stage:"config",error:"OPENAI_API_KEY absente"},{status:503})
+  const r=await fetch("https://api.openai.com/v1/models/gpt-image-1",{headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`},cache:"no-store"})
+  const d=await r.json().catch(()=>({}))
+  if(!r.ok)return NextResponse.json({ok:false,stage:"openai",status:r.status,error:d?.error?.message||"Clé ou accès modèle refusé"},{status:503})
+  return NextResponse.json({ok:true,stage:"openai",model:d?.id||"gpt-image-1"})
+ }catch(e){
+  return NextResponse.json({ok:false,stage:"network",error:e instanceof Error?e.message:"Erreur réseau"},{status:503})
+ }
+}
+
 export async function POST(req:NextRequest){try{
  if(!process.env.OPENAI_API_KEY)return NextResponse.json({error:"Service image indisponible : clé OpenAI absente."},{status:503})
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)return NextResponse.json({error:"Service projet indisponible."},{status:503})
